@@ -1,0 +1,33 @@
+# Credenziali e file segreti
+.env
+*.pem
+*.key
+
+# File di configurazione dell'editor locale
+.vscode/
+.idea/
+
+# File spazzatura del sistema operativo
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Log e file di debug
+*.log
+
+# Dataset: distribuito a parte (Zenodo), non versionato
+data/json_repository_for_simulation/SystemData/
+data/json_repository_for_simulation/ScenarioData/
+data/prices/
+data/imbalance/
+*.pkl
+
+# Output rigenerabili
+results/
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/

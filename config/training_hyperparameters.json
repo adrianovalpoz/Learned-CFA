@@ -1,0 +1,10 @@
+{
+    "description": "Training hyperparameters of the Learned-CFA policy (Table 3 of the paper). sigma, alpha, n_layers and hidden_dim come from the Optuna study; population_size, n_iterations and weight_decay were set by hand.",
+    "population_size": 40,
+    "sigma": 0.06482672422496741,
+    "alpha": 0.08126420254574877,
+    "n_iterations": 1000,
+    "weight_decay": 0.0,
+    "n_layers": 1,
+    "hidden_dim": 48
+}

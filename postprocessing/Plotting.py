@@ -1,42 +1,44 @@
-#import json
+import json
 import os
 import numpy as np
 import matplotlib.pyplot as plt
-import seaborn as sns
-from validationplot import plot_validation_results, comulative_results
-import json
+# import seaborn as sns
 from datetime import datetime
+import _path
+from validationplot import plot_validation_results, comulative_results
+from learned_cfa_src.directory_names import results_dir, fig_dir
 
 start_date_plot = datetime(2024,7,1) # Choice how many days you want to load as Data and to train
 end_date_plot = datetime(2024,7,31)
-Opt_Type = "Deterministic"  #Type of Optimization ['Deterministic', 'Parametric']
+Opt_Type = "Static_CFA"  # Type of Optimization # ['Deterministic', 'Static_CFA', 'Learned_CFA']
 #"gamma_1_cheby"
 models = ["gamma_zscore0_punto_3","gamma0punto4_optuna","gamma0punto5_optuna","gamma0punto6_optuna","gamma_zscore0_punto_7",]
 Model_Name = models[2]
 
 # --- CONFIGURAZIONE ---
-current_dir = os.path.dirname(os.path.abspath(__file__))
-json_dir = os.path.join(current_dir, 'results')
+# current_dir = os.path.dirname(os.path.abspath(__file__))
+# json_dir = os.path.join(current_dir, 'results')
+
 start_str = start_date_plot.strftime('%d-%m-%Y')
 end_str   = end_date_plot.strftime('%d-%m-%Y')
 
 
-if Opt_Type == "Parametric":
+if Opt_Type == "Learned_CFA":
     JSON_FILE = f"Results_{start_str}_to_{end_str}_{Opt_Type}_{Model_Name}.json"
 else:
     JSON_FILE = f"Results_{start_str}_to_{end_str}_{Opt_Type}.json"
 
-json_path = os.path.join(json_dir, JSON_FILE)
+json_path = os.path.join(results_dir, JSON_FILE)
 
-main_dir = os.path.dirname(current_dir)
-save_fig_dir = os.path.join(main_dir, 'figure', '_Code_repository')
+#main_dir = os.path.dirname(current_dir)
+#save_fig_dir = os.path.join(main_dir, 'figure', '_Code_repository')
 
-os.makedirs(save_fig_dir, exist_ok=True)
+os.makedirs(fig_dir, exist_ok=True)
 
 def save_article_figure(fig, filename):
     """Save cropped figures for LaTeX/Overleaf in vector and raster formats."""
-    fig.savefig(os.path.join(save_fig_dir, f"{filename}.pdf"), bbox_inches="tight", pad_inches=0.02)
-    fig.savefig(os.path.join(save_fig_dir, f"{filename}.png"), bbox_inches="tight", pad_inches=0.02, dpi=300)
+    fig.savefig(os.path.join(fig_dir, f"{filename}.pdf"), bbox_inches="tight", pad_inches=0.02)
+    fig.savefig(os.path.join(fig_dir, f"{filename}.png"), bbox_inches="tight", pad_inches=0.02, dpi=300)
 
 # --- CARICAMENTO DATI ---
 if not os.path.exists(json_path):
@@ -61,7 +63,7 @@ dist = d["scenarios_data"]
 # plt.xlabel("Giorno")
 # plt.ylabel("Euro Cumulati (€)")
 # plt.grid(True, alpha=0.3)
-fig = comulative_results(opt_type,models,start_str,end_str,json_dir)
+fig = comulative_results(opt_type,models,start_str,end_str,results_dir)
 save_article_figure(fig, f"{opt_type}_Cumulative_Profit")
 
 # --- 2. DAILY RISK TIMELINE ---
@@ -207,7 +209,7 @@ except Exception as e:
 
 
 plt.show()
-print(f"📊 All plots generated successfully from JSON data in: {save_fig_dir}")
+print(f"📊 All plots generated successfully from JSON data in: {fig_dir}")
 # # %% ###########################################################     PLOTTING RESULTS     ###################################################################################################### 
 #     number_days=(end_date_plot-start_date_plot).days + 1
 #     start_str = start_date_plot.strftime('%d-%m-%Y')

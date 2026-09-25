@@ -16,14 +16,14 @@ from learned_cfa_src.evolution_strategy.es_Policy import Evolution_Strategy_Trai
 from learned_cfa_src.evolution_strategy.NN_sizing import NN_opt_objective
 from learned_cfa_src.data_pipeline.Problem_Data   import Problem_Data
 # Directory path creation
-from learned_cfa_src.directory_names import base_dir, save_NN_dir, results_dir, json_repository_dir, NN_size_dir, config_dir
+from learned_cfa_src.directory_names import save_NN_dir, results_dir,data_json_dir,scenario_json_dir, training_check_dir,json_repository_dir, NN_size_dir, config_dir
 
 ########## inizialize the seeds ###################
 sid = 101 #42, 101, 1337, 2025]:
 torch.manual_seed(sid)
 np.random.seed(sid)
 random.seed(sid)
-fixed_sampler = TPESampler(seed=sid)
+fixed_sampler = TPESampler(seed=sid) 
 
 start_time = time.time()
 # %% ########################################################   SIMULATION CONTROL INPUTS  ########################################################################################################################################################
@@ -34,8 +34,8 @@ timesteps  = 24       # Dont Change this
 
 ##### Choice of the Optimization type #####
 
-Opt_Type   = 'Learned_CFA'     # Type of Optimization # ['Deterministic', 'Static_CFA', 'Learned_CFA']
-Data_Type = "forecast"        # Type of Determinsitic Data ['Observed', 'forecast']
+Opt_Type   = 'Static_CFA'     # Type of Optimization # ['Deterministic', 'Static_CFA', 'Learned_CFA']
+Data_Type  = "forecast"        # Type of Determinsitic Data ['Observed', 'forecast']
 
 ##### Learned-CFA inputs ######
 
@@ -50,19 +50,20 @@ NN_Training = 'n'     # put y If want to train the NN with the load data
                        # otherwise put n if you want to use a trained NN for the optimization
 NN_Optimization = 'n' # put y If want to optimize the NN size and hyperparameters
                        # otherwise put n if you want to use a already sized NN
-
+gamma = 0.5
+workers = 32
 # %% ################################################## IMPORT DATA FROM JSON AND DATA OBJECT CREATION  ##################################################################################
 if __name__ == '__main__':
     ## section to load the Json files for the data of the days considered ##
     # data folder directories
-    data_json_dir  =  os.path.join(base_dir, 'Data','json_repository_for_simulation','SystemData')
-    scenario_json_dir  =  os.path.join(base_dir, 'Data','json_repository_for_simulation','ScenarioData')
+    #data_json_dir  =  os.path.join(base_dir, 'Data','json_repository_for_simulation','SystemData')
+    #scenario_json_dir  =  os.path.join(base_dir, 'Data','json_repository_for_simulation','ScenarioData')
 
     # Get list of all .json files in the directory
     data_json_files = [file for file in os.listdir(data_json_dir) if file.endswith('.json')]
     scenario_json_files = [file for file in os.listdir(scenario_json_dir) if file.endswith('.json')]
     # load .Json Statistics of DATAFRAME
-    Data_Statistics_path = os.path.join(base_dir, 'Data','json_repository_for_simulation','normalization_stats.json')
+    Data_Statistics_path = os.path.join(json_repository_dir,'normalization_stats.json')
     with open(Data_Statistics_path, "r") as file:
         Data_Statistics = json.load(file)
 
@@ -81,7 +82,7 @@ if __name__ == '__main__':
 
     while date <= end_date:
         # 2. WHITELIST: Se stiamo addestrando o ottimizzando la NN, salta tutto ciò che non è in train_months
-        if Opt_Type == 'Parametric' and (NN_Training == 'y' or NN_Optimization == 'y'):
+        if Opt_Type == 'Learned_CFA' and (NN_Training == 'y' or NN_Optimization == 'y'):
             if date.month not in train_months:
                 date += timedelta(days=1)
                 continue # Salta al giorno successivo senza leggere il JSON
@@ -113,8 +114,8 @@ if __name__ == '__main__':
             print(f"[WARNING]  {day} Data not Found.") #⚠️
         date+=timedelta(days=1) # needed to progress
 
-
-    if Opt_Type == 'Learned_CFA':
+   
+    if Opt_Type == 'Learned_CFA'and NN_Training == 'n' and NN_Optimization == 'n':
         dummy_vec = torch.zeros(4)
         policy = PolicyNetwork(input_size, output_size, dummy_vec, dummy_vec, NN_Structure["Hidden_size"], NN_Structure["N_layers"])
         policy.load_state_dict(torch.load(os.path.join(save_NN_dir, f"{Model_Name}.pth")))
@@ -133,10 +134,11 @@ if __name__ == '__main__':
         print("NN Optimization Start...")
 
         study = optuna.create_study(direction="maximize",sampler=fixed_sampler,pruner=optuna.pruners.MedianPruner(n_warmup_steps=20))
-        study.optimize(lambda trial: NN_opt_objective(trial, DATA, Data_Statistics["mu"], Data_Statistics["sigma"], Data_Type, Model_Name), n_trials=50)
+        study.optimize(lambda trial: NN_opt_objective(trial, DATA, Data_Statistics["mu"], Data_Statistics["sigma"], Data_Type,gamma, workers,Model_Name), n_trials=50)
         print("Migliori parametri:", study.best_params)
 
-        save_best_hp_dir = os.path.join(base_dir,'evolution_strategy','NN_Size','best_hyperparameters.json')
+        os.makedirs(NN_size_dir, exist_ok=True)
+        save_best_hp_dir = os.path.join(NN_size_dir,'best_hyperparameters.json')
 
         with open(save_best_hp_dir, "w") as f:
             json.dump(study.best_params, f, indent=4)
@@ -148,10 +150,10 @@ if __name__ == '__main__':
         sigma_for_norm = torch.tensor(Data_Statistics["sigma"], dtype=torch.float32)
         model = PolicyNetwork(input_size, output_size,mu_for_norm,sigma_for_norm,NN_Structure["Hidden_size"],NN_Structure["N_layers"])             # NN Initializationl
 
- 
+        os.makedirs(training_check_dir, exist_ok=True)
         os.makedirs(save_NN_dir, exist_ok=True)
         start_time = time.perf_counter()
-        Evolution_Strategy_Training_HPC(Optimize_Risk,model,DATA,Data_Type,Evolution_Params,Model_Name,save_NN_dir,training_check_dir)    # Training function Call
+        Evolution_Strategy_Training_HPC(Optimize_Risk,model,DATA,gamma,Data_Type,workers,Evolution_Params,Model_Name,save_NN_dir,training_check_dir)    # Training function Call
         end_time = time.perf_counter()
         elapsed_time = end_time - start_time
         print(f"tempo totale: {elapsed_time:.2f} secondi ({elapsed_time/60:.2f} minuti)")
@@ -230,7 +232,7 @@ if __name__ == '__main__':
     
         ## Risk Assessment
 
-        RiskCosts_day,_,Imbalance_scenarios,Costs_diff_scenarios_day,Costs,Costs_CVaR_day,Imbalance_Costs_CVaR_day,Imbalance_costs_scenarios_day =  Optimize_Risk(DATA[day],theta_e_day,theta_d_day,Data_Type)
+        RiskCosts_day,_,Imbalance_scenarios,Costs_diff_scenarios_day,Costs,Costs_CVaR_day,Imbalance_Costs_CVaR_day,Imbalance_costs_scenarios_day =  Optimize_Risk(DATA[day],theta_e_day,theta_d_day,gamma,Data_Type)
         if Costs != Costs_day:
             print("Costs different")
             print(f"cost from energy flux = {Costs_day} | Costs from Obj Risk = {Costs}")
@@ -425,10 +427,13 @@ if __name__ == '__main__':
 
     # Salvataggio in formato JSON
     
-    if Opt_Type == "Parametric":
+    if Opt_Type == 'Learned_CFA':
         json_name = f"Results_{start_str}_to_{end_str}_{Opt_Type}_{Model_Name}.json"
+    elif Data_Type == "Observed":
+        json_name = f"Results_{start_str}_to_{end_str}_{Opt_Type}_perf.json"
     else:
         json_name = f"Results_{start_str}_to_{end_str}_{Opt_Type}.json"
+    os.makedirs(results_dir, exist_ok=True)
     json_path = os.path.join(results_dir, json_name)
     
     with open(json_path, 'w') as f:

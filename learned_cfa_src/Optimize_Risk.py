@@ -1,22 +1,22 @@
 from .milp.Optimize_Energy_Flux import optimize_energy_flux, optimize_tracking_fixed_grid
 
 import numpy as np
-def normalize_value(c, worst, best):
-    # Calcoliamo lo swing totale
-    delta = worst - best
-    # Applichiamo la formula
-    v = (worst - c) / delta
-    # Clipping di sicurezza (fondamentale per la stabilità della NN)
-    return v #np.clip(v, 0, 1)
+# def normalize_value(c, worst, best):
+#     # Calcoliamo lo swing totale
+#     delta = worst - best
+#     # Applichiamo la formula
+#     v = (worst - c) / delta
+#     # Clipping di sicurezza (fondamentale per la stabilità della NN)
+#     return v #np.clip(v, 0, 1)
 
-def gamma_computation(Best_DA,Worst_DA,Best_ICVaR,Worst_ICVaR):
-    P = [Best_DA,Worst_ICVaR]#maxrisk extreme scenario
-    Q = [Worst_DA ,Best_ICVaR]#minrisk extreme scenario
-    M = [None,Worst_ICVaR]
-    M[0] = Q[0] + Q[1] - M[1]
-    DA_valuefunction_M= normalize_value(M[0], Worst_DA, Best_DA)
-    gamma= DA_valuefunction_M
-    return gamma
+# def gamma_computation(Best_DA,Worst_DA,Best_ICVaR,Worst_ICVaR):
+#     P = [Best_DA,Worst_ICVaR]#maxrisk extreme scenario
+#     Q = [Worst_DA ,Best_ICVaR]#minrisk extreme scenario
+#     M = [None,Worst_ICVaR]
+#     M[0] = Q[0] + Q[1] - M[1]
+#     DA_valuefunction_M= normalize_value(M[0], Worst_DA, Best_DA)
+#     gamma= DA_valuefunction_M
+#     return gamma
 
 def imbalance_costs(realized,planned,imb_price_pos,imb_price_neg):
     """Hourly imbalance costs of a realized grid exchange against the planned one.
@@ -33,7 +33,7 @@ def imbalance_costs(realized,planned,imb_price_pos,imb_price_neg):
     return costs,Imbalance
    
 
-def Optimize_Risk(data,theta_e,theta_d,Data_Type):
+def Optimize_Risk(data,theta_e,theta_d,gamma,Data_Type):
     timesteps = data.Simulation_Data["time_horizon"]*data.Simulation_Data["time_resolution"]
     positive_price_imbalance = data.Prices["Imbalance_positive"]
     negative_price_imbalance = data.Prices["Imbalance_negative"]
@@ -133,45 +133,45 @@ def Optimize_Risk(data,theta_e,theta_d,Data_Type):
     Imbalance_Costs_CVaR_norm = (Imbalance_Costs_CVaR-Imbalance_Costs_VaR_baseline)/sigma_tail_baseline 
 #### reward ####à##  
     #gamma = gamma_computation(Best_DA,Worst_DA,Best_ICVaR,Worst_ICVaR)
-    gamma = 0.5
+    #gamma = 0.5
     #obj_risk = DA_valuefunction +gamma*ICVaR_valuefunction
     obj_risk = Planned_Costs_norm +gamma*Imbalance_Costs_CVaR_norm
    
    
     return obj_risk,SoC_end,Imbalance_Scenarios, Costs_diff_scenarios,Planned_Costs,Costs_CVaR,Imbalance_Costs_CVaR,Imbalance_costs_scenarios
 
-def Optimize_Risk_Generation(data,theta_e,theta_d):
-    timesteps = data.Simulation_Data["time_horizon"]*data.Simulation_Data["time_resolution"]
-    Energy_forecast   = data.Energy_Data["forecast"]
-    Energy_scenarios   = data.Energy_scenarios    # rivedere forma database dovrebbe
-    Market_Price   = data.Prices['Market']
-    positive_price_imbalance = data.Prices["Imbalance_positive"]
-    negative_price_imbalance = data.Prices["Imbalance_negative"]
-    Modified_Energy_forecast = []
-    profits = []
-    for t in range(timesteps):
-        Modified_Energy_forecast.append(theta_e[t]*Energy_forecast[t])
-        profits.append(Market_Price[t]*theta_e[t]*Energy_forecast[t])
+# def Optimize_Risk_Generation(data,theta_e,theta_d):
+#     timesteps = data.Simulation_Data["time_horizon"]*data.Simulation_Data["time_resolution"]
+#     Energy_forecast   = data.Energy_Data["forecast"]
+#     Energy_scenarios   = data.Energy_scenarios    # rivedere forma database dovrebbe
+#     Market_Price   = data.Prices['Market']
+#     positive_price_imbalance = data.Prices["Imbalance_positive"]
+#     negative_price_imbalance = data.Prices["Imbalance_negative"]
+#     Modified_Energy_forecast = []
+#     profits = []
+#     for t in range(timesteps):
+#         Modified_Energy_forecast.append(theta_e[t]*Energy_forecast[t])
+#         profits.append(Market_Price[t]*theta_e[t]*Energy_forecast[t])
 
-###### IMBALANCE #######
-    Imbalance_Costs = []
-    Imbalance_Scenarios = []
-    N_scenarios = 0
-    for s in range(N_scenarios):
-        imbalance_s = []
-        Imbalance_costs = []
-        for t in range(timesteps):
+# ###### IMBALANCE #######
+#     Imbalance_Costs = []
+#     Imbalance_Scenarios = []
+#     N_scenarios = 0
+#     for s in range(N_scenarios):
+#         imbalance_s = []
+#         Imbalance_costs = []
+#         for t in range(timesteps):
             
-            imbalance = SCENARIO - Modified_Energy_forecast[t]
-            imbalance_s.append(imbalance)
-            if imbalance >= 0:
-                Imbalance_costs.append(-positive_price_imbalance[t]*imbalance)
-            elif imbalance <0:
-                Imbalance_costs.append(negative_price_imbalance[t]*imbalance)
+#             imbalance = SCENARIO - Modified_Energy_forecast[t]
+#             imbalance_s.append(imbalance)
+#             if imbalance >= 0:
+#                 Imbalance_costs.append(-positive_price_imbalance[t]*imbalance)
+#             elif imbalance <0:
+#                 Imbalance_costs.append(negative_price_imbalance[t]*imbalance)
 
-        Imbalance_Scenarios.append(sum(imbalance_s))
-        Imbalance_Costs.append(sum(Imbalance_costs))
-    return
+#         Imbalance_Scenarios.append(sum(imbalance_s))
+#         Imbalance_Costs.append(sum(Imbalance_costs))
+#     return
 
 def LeftCVaR(Data,alpha):
     Data = np.asarray(Data)

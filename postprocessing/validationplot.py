@@ -124,7 +124,7 @@ def comulative_results(opt_type,models,start_str,end_str,json_dir):
 
     for model_name in models:
        
-        filename = f"Results_{start_str}_to_{end_str}_Parametric_{model_name}.json"
+        filename = f"Results_{start_str}_to_{end_str}_Learned_CFA_{model_name}.json"
   
         path = os.path.join(json_dir, filename)
 

@@ -11,7 +11,7 @@ from .Policy import PolicyNetwork
 from ..Optimize_Risk  import Optimize_Risk
 
 
-def NN_opt_objective(trial,DATA,mu_data,sigma_data,Data_Type,Model_Name):
+def NN_opt_objective(trial,DATA,mu_data,sigma_data,Data_Type,gamma,optimal_workers,Model_Name):
     # Nota: DATA, mu_data, ecc. devono essere disponibili (globali o caricati qui)
     # --- 1. Optuna suggerisce i parametri ---
     
@@ -51,7 +51,7 @@ def NN_opt_objective(trial,DATA,mu_data,sigma_data,Data_Type,Model_Name):
     
     # --- 3. Il Loop di Training (Inner Loop) ---
 
-    reward = Evolution_Strategy_Training_HPC(Optimize_Risk,model,DATA,Data_Type,Evolution_Params,Model_Name,save_dir ='',training_check_dir = '',trial=trial)    # Training function Call
+    reward = Evolution_Strategy_Training_HPC(Optimize_Risk,model,DATA,gamma,Data_Type,optimal_workers,Evolution_Params,Model_Name,save_dir ='',training_check_dir = '',trial=trial)    # Training function Call
     
     
     print(f"[Trial {trial.number}] END   | Final Reward: {reward:.4f}")

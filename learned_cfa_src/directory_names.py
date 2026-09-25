@@ -38,12 +38,10 @@ json_repository_dir = os.path.join(data_dir, 'json_repository_for_simulation')
 data_json_dir = os.path.join(json_repository_dir, 'SystemData')          # one JSON per day: system, forecasts, prices
 scenario_json_dir = os.path.join(json_repository_dir, 'ScenarioData')    # one JSON per day: scenario MILP results
 sample_data_dir = os.path.join(data_dir, 'sample')                       # few days shipped with the code
-
-# %% ############################## TRAINED MODELS ##############################
-save_NN_dir = os.path.join(base_dir, 'saved_ANN')                        # directory where the trained policies are stored
-NN_size_dir = os.path.join(evolution_strategy_dir, 'NN_Size')            # hyperparameter search output
-
 # %% ############################## OUTPUTS ##############################
 results_dir = os.path.join(base_dir, 'results')                          # everything the code regenerates
 training_check_dir = os.path.join(results_dir, 'TrainingCheck')          # per-iteration figures and training log
-fig_dir = os.path.join(results_dir, 'figure')                            # figures produced by postprocessing
+fig_dir = os.path.join(results_dir, 'figure')                           # figures produced by postprocessing
+# %% ############################## TRAINED MODELS ##############################
+save_NN_dir = os.path.join(base_dir, 'saved_ANN')                        # directory where the trained policies are stored
+NN_size_dir = os.path.join(results_dir, 'NN_Size')            # hyperparameter search output

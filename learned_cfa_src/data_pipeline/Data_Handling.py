@@ -3,7 +3,7 @@ import numpy as np
 import json
 import pandas as pd
 import os
-from simult_intervals import chebyshev_interval
+from .simult_intervals import chebyshev_interval
 from datetime import datetime, timedelta
 
 # Class created to store and manipulate the data and save them for the simulation
@@ -140,8 +140,8 @@ class Data_Handling:
         # df['Prezzo Medio di Acquisto (€/MWh)'] = pd.to_numeric(df['Prezzo Medio di Acquisto (€/MWh)'], errors='coerce')
         # 4. RIPARARE I BUCHI (NaN)
         # ffll() copia il prezzo dell'ora precedente se manca un dato
-        df.fillna(method='ffill', inplace=True) 
-        df.fillna(method='bfill', inplace=True) # Per sicurezza se manca la prima ora
+        df.ffill(inplace=True) 
+        df.bfill(inplace=True) # Per sicurezza se manca la prima ora
         Imbalance_negative = df["Short"]
         Imbalance_positive = df["Long"]
         Imbalance_negative = Imbalance_negative/1000

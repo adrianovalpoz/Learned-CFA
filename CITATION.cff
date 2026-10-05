@@ -1,0 +1,40 @@
+# How to cite this repository.
+#
+# GitHub reads this file from the repository root and shows a "Cite this repository" button;
+# Zenodo reads it when archiving a release and uses it to fill in the record metadata.
+# Fields marked TODO must be completed before the first release.
+
+cff-version: 1.2.0
+message: "If you use this software, please cite both the software itself and the paper it accompanies."
+title: "Learned-CFA: risk-aware forecast adjustments for PV-BESS day-ahead scheduling"
+type: software
+repository-code: "https://github.com/adrianovalpoz/Learned-CFA"
+license: MIT                       # matches the LICENSE file
+version: 1.0.0                     # TODO the version released with the paper
+date-released: "2026-01-01"        # TODO release date, YYYY-MM-DD
+doi: "10.5281/zenodo.0000000"      # TODO the Zenodo DOI of this release
+keywords:
+  - photovoltaics
+  - battery energy storage
+  - day-ahead scheduling
+  - contextual optimisation
+  - evolutionary strategy
+  - conditional value at risk
+
+authors:
+  - given-names: Adriano
+    family-names: Valle
+    # orcid: "https://orcid.org/0000-0000-0000-0000"   # TODO
+    # affiliation: ""                                  # TODO
+  # TODO add the co-authors, in the order of the paper
+
+preferred-citation:
+  type: article
+  title: "Bridging Deterministic and Stochastic Scheduling: Learning Risk-aware Forecast Adjustments for PV-BESS Operation"
+  journal: "Applied Energy"
+  year: 2026
+  doi: "10.1016/j.apenergy.2026.128975"
+  authors:
+    - given-names: Adriano
+      family-names: Valle
+    # TODO the same author list as above

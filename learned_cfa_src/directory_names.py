@@ -34,6 +34,7 @@ config_dir = os.path.join(base_dir, 'config')                            # hand-
 data_dir = os.path.join(base_dir, 'data')                                # dataset root
 prices_dir = os.path.join(data_dir, 'prices')                            # day-ahead prices (raw input, not shipped)
 imbalance_dir = os.path.join(data_dir, 'imbalance')                      # imbalance prices (raw input, not shipped)
+raw_data_dir = os.path.join(data_dir, 'raw')                              # PV scenarios, forecasts and observed values (raw input, not shipped)
 json_repository_dir = os.path.join(data_dir, 'json_repository_for_simulation')
 data_json_dir = os.path.join(json_repository_dir, 'SystemData')          # one JSON per day: system, forecasts, prices
 scenario_json_dir = os.path.join(json_repository_dir, 'ScenarioData')    # one JSON per day: scenario MILP results

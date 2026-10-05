@@ -1,17 +1,20 @@
 import os
 import json
 import numpy as np
-from datetime import datetime, timedelta
+from datetime import datetime
+import _path
+from learned_cfa_src.directory_names import data_json_dir, json_repository_dir
 
 # SCRIPT PER LA NORMALIZZAZIONE
 
 # CONFIGURAZIONE
-JSON_FOLDER = "C:/Users/adria/Desktop/INESCTEC/00.code/Architecture_Neural_Network/Data/json_repository_for_simulation/SystemData"  # La cartella dove hai i file data_2024-05-01.json
-OUTPUT_FILE = "C:/Users/adria/Desktop/INESCTEC/00.code/Architecture_Neural_Network/Data/json_repository_for_simulation/normalization_stats.json"
+#JSON_FOLDER = "C:/Users/adria/Desktop/INESCTEC/00.code/Architecture_Neural_Network/Data/json_repository_for_simulation/SystemData"  # La cartella dove hai i file data_2024-05-01.json
+OUTPUT_FILE =  os.path.join(json_repository_dir, 'normalization_stats.json')
 test_months = [2, 7, 10] #1=jenuary 12 = december
 train_months = [1,3,4,5,6,8,9,11,12] #1=jenuary 12 = december
+
 def generate_global_stats():
-    print(f"--- Inizio scansione cartella: {JSON_FOLDER} ---")
+    print(f"--- Inizio scansione cartella: {data_json_dir} ---")
     
     # Accumulatori
     all_energy_mean = []
@@ -19,7 +22,7 @@ def generate_global_stats():
     all_demand_mean = []
     all_demand_dev  = []
 
-    files = [f for f in os.listdir(JSON_FOLDER) if f.endswith('.json')]
+    files = [f for f in os.listdir(data_json_dir) if f.endswith('.json')]
     
     if not files:
         print("ERRORE: Nessun file JSON trovato!")
@@ -30,18 +33,18 @@ def generate_global_stats():
         day_string,_ = day_json.split(".")
         data_obj = datetime.fromisoformat(day_string)
         if data_obj.month in train_months:
-            filepath = os.path.join(JSON_FOLDER, filename)
+            filepath = os.path.join(data_json_dir, filename)
 
-        with open(filepath, 'r') as f:
-            try:
-                data = json.load(f)
-                # Estraiamo le liste orarie (24 valori per file)
-                all_energy_mean.extend(data['Energy']['mean'])
-                all_energy_dev.extend(data['Energy']['deviation'])
-                all_demand_mean.extend(data['Demand']['mean'])
-                all_demand_dev.extend(data['Demand']['deviation'])
-            except KeyError:
-                print(f"Skipping {filename}: Formato non valido")
+            with open(filepath, 'r') as f:
+                try:
+                    data = json.load(f)
+                    # Estraiamo le liste orarie (24 valori per file)
+                    all_energy_mean.extend(data['Energy']['mean'])
+                    all_energy_dev.extend(data['Energy']['deviation'])
+                    all_demand_mean.extend(data['Demand']['mean'])
+                    all_demand_dev.extend(data['Demand']['deviation'])
+                except KeyError:
+                    print(f"Skipping {filename}: Formato non valido")
 
     print(f"Totale campioni processati: {len(all_energy_mean)} ore")
 
@@ -61,7 +64,7 @@ def generate_global_stats():
             float(np.std(all_demand_mean)),
             float(np.std(all_demand_dev)),
         ],
-        "info": "Calculated on entire dataset. Order: [EnMean, EnDev, DemMean, DemDev]"
+        "info": "Calculated on entire Training Dataset. Order: [EnMean, EnDev, DemMean, DemDev]"
     }
 
     # SALVATAGGIO
@@ -72,7 +75,5 @@ def generate_global_stats():
     print(f"Mean Vector: {stats['mu']}")
     print(f"Std Vector:  {stats['sigma']}")
 
-
-generate_global_stats()
-# if __name__ == "__main__":
-#     generate_global_stats()
+if __name__ == "__main__":
+    generate_global_stats()

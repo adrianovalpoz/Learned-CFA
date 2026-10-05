@@ -1,21 +1,21 @@
 """
-Timing harness for the offline scenario-precomputation stage (Reviewer 1, comment 9,
-which asks for the "scenario-precomputation time" among the figures needed to substantiate
-the computational-efficiency claim).
+Parallel counterpart of Scenario_MILPS_Generations.py, for the offline scenario-precomputation
+stage. It also produces the timing figures asked for by Reviewer 1, comment 9 (the
+"scenario-precomputation time" behind the computational-efficiency claim).
 
->>> PLACE THIS FILE IN  Architecture_Neural_Network/Data/scripts/  <<<
-It uses exactly the same directory layout and sibling imports as the original
-Scenario_MILPS_Generations.py (Problem_Data.py and optimize_energy_flux.py live next to
-it), so it must sit in that folder to resolve them.
-
-MEASUREMENT-ONLY copy of Scenario_MILPS_Generations.py:
+Same folder as the sequential script, same folders from directory_names, same output: the two
+generators write byte-comparable ScenarioData files, and either one can rebuild the dataset.
 
   * the 1,000 scenario MILPs of each day are dispatched to a process pool (N_WORKERS)
     instead of being solved sequentially;
   * elapsed time is measured with time.perf_counter(), reported separately for the
     scenario solves and for the per-day baseline/bounds/CVaR block;
-  * NOTHING IS WRITTEN TO DISK - no JSON is produced, so running this cannot overwrite
-    the existing ScenarioData files.
+  * WRITE_JSON decides what the run is for. False (the default) measures the times and
+    writes nothing, so it cannot touch the existing ScenarioData files; True regenerates
+    the dataset. The JSON is written outside the timers, so the measured times are the
+    same either way.
+  * either way the run must START FROM THE FIRST DAY: the random stream advances day by
+    day, so a single day re-generated on its own would draw different scenarios.
 
 WHY THE INNER LOOP CAN BE PARALLELISED. In the original, scenario i of a given day reads
 SoC_End[i] - a value produced on a PREVIOUS day - and appends its own result to the end of
@@ -23,23 +23,18 @@ the same list. Iteration i never consumes the result of iteration i-1, so within
 1,000 solves are independent given the incoming SoC list; only the day-to-day chaining is
 sequential. That structure is preserved exactly.
 
-TWO PROPERTIES OF THE ORIGINAL REPRODUCED HERE DELIBERATELY:
-  1. Problem_Data in this tree takes 14 positional arguments (Cost_Baseline was added
-     after the generator was written) while Scenario_MILPS_Generations.py passes only 13.
-     Run unmodified it raises "TypeError: __init__() missing 1 required positional
-     argument: 'Worst_ICVaR'". The extra placeholder is supplied below.
-  2. SoC_End is never reset between days: it grows (1,000 entries after day 1, 2,000 after
+ONE PROPERTY OF THE ORIGINAL REPRODUCED HERE DELIBERATELY:
+     SoC_End is never reset between days: it grows (1,000 entries after day 1, 2,000 after
      day 2, ...) while the loop always indexes positions 0..999, so from the third day
-     onwards every day re-reads the SoC values produced on day one. Reproduced verbatim -
-     the point is to measure the stage as it was actually run - but worth knowing when
-     interpreting the precomputed dataset.
+     onwards every day re-reads the SoC values produced on day one. Reproduced verbatim,
+     so that both generators rebuild the published dataset - but worth knowing when
+     interpreting it.
 
 Run:
     py Scenario_MILPS_Generation_HPC.py
 """
 
 import os
-import sys
 import json
 import time
 import random
@@ -49,6 +44,7 @@ from datetime import datetime, timedelta
 import numpy as np
 
 # ----------------------------------------------------------------------------------
+WRITE_JSON = False      # True = write the dataset into ScenarioData; False = timing only
 N_WORKERS = 32          # <-- set by hand: 32 on the workstation, ~6 on a laptop
 N_SAMPLES = 1000        # joint scenarios per day, as in the original
 START_DATE = datetime(2024, 1, 1)
@@ -56,17 +52,12 @@ END_DATE = datetime(2024, 12, 31)
 SEED = 101
 # ----------------------------------------------------------------------------------
 
-# Same layout as the original: this file sits in Data/scripts, the JSONs one level up.
-script_dir = os.path.dirname(os.path.abspath(__file__))
-SYSTEM_DATA = os.path.join(script_dir, "..", "json_repository_for_simulation", "SystemData")
-
-# Needed so the spawned workers can re-import this module regardless of the working
-# directory the script was launched from.
-if script_dir not in sys.path:
-    sys.path.insert(0, script_dir)
-
-from Problem_Data import Problem_Data                    # noqa: E402
-from optimize_energy_flux import optimize_energy_flux    # noqa: E402
+# _path puts the repository root on sys.path. Every spawned worker re-applies it, because
+# under 'spawn' each worker re-imports this module, whatever the working directory was.
+import _path                                                                         # noqa: F401,E402
+from learned_cfa_src.data_pipeline.Problem_Data import Problem_Data                   # noqa: E402
+from learned_cfa_src.data_pipeline.optimize_energy_flux import optimize_energy_flux   # noqa: E402
+from learned_cfa_src.directory_names import data_json_dir, scenario_json_dir          # noqa: E402
 
 # ---------------------------------------------------------------------------------
 # PuLP/CBC temp-file cleanup race (Windows). After a solve, silent_remove() deletes the
@@ -108,7 +99,7 @@ _CACHE = {"day": None, "data": None}
 
 def _get_day(day):
     if _CACHE["day"] != day:
-        with open(os.path.join(SYSTEM_DATA, f"data_{day}.json"), "r") as f:
+        with open(os.path.join(data_json_dir, f"data_{day}.json"), "r") as f:
             _CACHE["data"] = _make_problem_data(json.load(f))
         _CACHE["day"] = day
     return _CACHE["data"]
@@ -203,7 +194,7 @@ if __name__ == "__main__":
     print("=" * 96)
     print("SCENARIO PRECOMPUTATION - TIMING RUN (nothing is written to disk)")
     print("=" * 96)
-    print(f"  data folder     : {os.path.normpath(SYSTEM_DATA)}")
+    print(f"  data folder     : {os.path.normpath(data_json_dir)}")
     print(f"  days            : {len(days)}")
     print(f"  scenarios/day   : {N_SAMPLES}")
     print(f"  scenario MILPs  : {len(days) * N_SAMPLES:,}")
@@ -218,7 +209,7 @@ if __name__ == "__main__":
     t0 = time.perf_counter()
     with concurrent.futures.ProcessPoolExecutor(max_workers=N_WORKERS) as pool:
         for k, day in enumerate(days):
-            with open(os.path.join(SYSTEM_DATA, f"data_{day}.json"), "r") as f:
+            with open(os.path.join(data_json_dir, f"data_{day}.json"), "r") as f:
                 DATA = _make_problem_data(json.load(f))
 
             # indices drawn from the same seeded stream, in the same order as the original
@@ -242,17 +233,42 @@ if __name__ == "__main__":
 
             te = time.perf_counter()
             i_best, i_worst = int(np.argmin(costs)), int(np.argmax(costs))
-            ImbalanceCostsCVaR(DATA, grids, grids[i_best])
-            ImbalanceCostsCVaR(DATA, grids, grids[i_worst])
-            g_base = optimize_energy_flux(DATA, "", "", "forecast")[12]
-            ImbalanceCostsCVaR(DATA, grids, g_base)
+            ICVaR_at_Best_DA = ImbalanceCostsCVaR(DATA, grids, grids[i_best])
+            ICVaR_at_Worst_DA = ImbalanceCostsCVaR(DATA, grids, grids[i_worst])
+
+            base = optimize_energy_flux(DATA, "", "", "forecast")
+            C_baseline, g_base = base[0], base[12]
+            ImbalanceCostsCVaR(DATA, grids, g_base)    # computed by the sequential script too, never stored
+
             e_max, e_min, d_max, d_min = theta_bounds(DATA)
-            g_maxrisk = optimize_energy_flux(DATA, e_max, d_min, "bounds")[12]
-            ImbalanceCostsCVaR(DATA, grids, g_maxrisk)
-            g_minrisk = optimize_energy_flux(DATA, e_min, d_max, "bounds")[12]
-            ImbalanceCostsCVaR(DATA, grids, g_minrisk)
+            maxrisk = optimize_energy_flux(DATA, e_max, d_min, "bounds")
+            C_best_cheby, g_maxrisk = maxrisk[0], maxrisk[12]
+            ICVaR_worst_Cheby = ImbalanceCostsCVaR(DATA, grids, g_maxrisk)
+
+            minrisk = optimize_energy_flux(DATA, e_min, d_max, "bounds")
+            C_worst_cheby, g_minrisk = minrisk[0], minrisk[12]
+            ICVaR_best_cheby = ImbalanceCostsCVaR(DATA, grids, g_minrisk)
             t_extra += time.perf_counter() - te
             n_milp += 3
+
+            # Written outside the timers, so the measured times stay comparable.
+            if WRITE_JSON:
+                Scenario_MILP_Results = {
+                    "Costs": costs.tolist(),
+                    "Grid_Exchange": grids,
+                    "C_baseline": C_baseline,
+                    "Grid_Exchange_Baseline": g_base,
+                    "Best_DA": float(costs[i_best]),
+                    "Worst_DA": float(costs[i_worst]),
+                    "Best_ICVaR": float(ICVaR_at_Worst_DA),   # crossed over, as in the sequential script
+                    "Worst_ICVaR": float(ICVaR_at_Best_DA),
+                    "C_best_cheby": C_best_cheby,
+                    "C_worst_cheby": C_worst_cheby,
+                    "ICVaR_worst_Cheby": float(ICVaR_worst_Cheby),
+                    "ICVaR_best_cheby": float(ICVaR_best_cheby)}
+                os.makedirs(scenario_json_dir, exist_ok=True)
+                with open(os.path.join(scenario_json_dir, f"Scenarios_Results_{day}.json"), "w") as fjson:
+                    json.dump(Scenario_MILP_Results, fjson, indent=4)
 
             if k == 0 or (k + 1) % 10 == 0:
                 el = time.perf_counter() - t0

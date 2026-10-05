@@ -1,0 +1,3 @@
+# Dataset JSON: store and check out the exact bytes, with no end-of-line conversion,
+# so that the files in a clone match the ones distributed in the separate archive.
+data/json_repository_for_simulation/** -text

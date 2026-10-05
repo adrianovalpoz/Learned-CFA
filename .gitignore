@@ -15,11 +15,11 @@ desktop.ini
 # Log e file di debug
 *.log
 
-# Dataset: distribuito a parte (Zenodo), non versionato
-data/json_repository_for_simulation/SystemData/
-data/json_repository_for_simulation/ScenarioData/
+# Dataset: i tre mesi di test sono versionati, il resto e' distribuito a parte (Zenodo).
+# Se scarichi il dataset completo in data/, non committare i giorni fuori dai mesi di test.
 data/prices/
 data/imbalance/
+data/raw/
 *.pkl
 
 # Output rigenerabili

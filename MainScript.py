@@ -9,7 +9,7 @@ import time
 import random
 from optuna.samplers import TPESampler
 from datetime import datetime, timedelta
-from learned_cfa_src.evolution_strategy.Policy import PolicyNetwork
+from learned_cfa_src.evolution_strategy.Policy import LearnedCFA, StaticCFA
 from learned_cfa_src.milp.Optimize_Energy_Flux import optimize_energy_flux
 from learned_cfa_src.Optimize_Risk  import Optimize_Risk , Real_Loss_Assessment                                                                                                                                                                                                                                                                                                                                                                             
 from learned_cfa_src.evolution_strategy.es_Policy import Evolution_Strategy_Training_HPC,Theta_Bounds,Theta_Choice
@@ -19,7 +19,7 @@ from learned_cfa_src.data_pipeline.Problem_Data   import Problem_Data
 from learned_cfa_src.directory_names import save_NN_dir, results_dir,data_json_dir,scenario_json_dir, training_check_dir,json_repository_dir, NN_size_dir, config_dir
 
 ########## inizialize the seeds ###################
-sid = 101 #42, 101, 1337, 2025]:
+sid = 101 
 torch.manual_seed(sid)
 np.random.seed(sid)
 random.seed(sid)
@@ -39,7 +39,7 @@ Data_Type  = "forecast"        # Type of Determinsitic Data ['Observed', 'foreca
 
 ##### Learned-CFA inputs ######
 
-Model_Name = "gamma0punto5_optuna"
+Model_Name = "toff0.5_sid101"
 input_size  = 10        # Number of Input Features for the NN Model [mean E, variance E, mean D, variance D, sin(T), cos(T)]
 output_size = 2        # Number of Output Features for the NN Model [theta E, theta D] 
 
@@ -54,10 +54,6 @@ gamma = 0.5
 workers = 32
 # %% ################################################## IMPORT DATA FROM JSON AND DATA OBJECT CREATION  ##################################################################################
 if __name__ == '__main__':
-    ## section to load the Json files for the data of the days considered ##
-    # data folder directories
-    #data_json_dir  =  os.path.join(base_dir, 'Data','json_repository_for_simulation','SystemData')
-    #scenario_json_dir  =  os.path.join(base_dir, 'Data','json_repository_for_simulation','ScenarioData')
 
     # Get list of all .json files in the directory
     data_json_files = [file for file in os.listdir(data_json_dir) if file.endswith('.json')]
@@ -82,7 +78,7 @@ if __name__ == '__main__':
 
     while date <= end_date:
         # 2. WHITELIST: Se stiamo addestrando o ottimizzando la NN, salta tutto ciò che non è in train_months
-        if Opt_Type == 'Learned_CFA' and (NN_Training == 'y' or NN_Optimization == 'y'):
+        if Opt_Type in ('Learned_CFA','Static_CFA') and (NN_Training == 'y' or NN_Optimization == 'y'):
             if date.month not in train_months:
                 date += timedelta(days=1)
                 continue # Salta al giorno successivo senza leggere il JSON
@@ -115,12 +111,12 @@ if __name__ == '__main__':
         date+=timedelta(days=1) # needed to progress
 
    
-    if Opt_Type == 'Learned_CFA'and NN_Training == 'n' and NN_Optimization == 'n':
+    if Opt_Type == 'Learned_CFA' and NN_Training == 'n' and NN_Optimization == 'n':
         dummy_vec = torch.zeros(4)
-        policy = PolicyNetwork(input_size, output_size, dummy_vec, dummy_vec, NN_Structure["Hidden_size"], NN_Structure["N_layers"])
+        policy = LearnedCFA(input_size, output_size, dummy_vec, dummy_vec, NN_Structure["Hidden_size"], NN_Structure["N_layers"])
         policy.load_state_dict(torch.load(os.path.join(save_NN_dir, f"{Model_Name}.pth")))
         policy.eval()
-    elif Opt_Type == 'Static_CFA':
+    elif Opt_Type == 'Static_CFA' and NN_Training == 'n' and NN_Optimization == 'n':
         with open(os.path.join(save_NN_dir, 'static_cfa.json'), "r") as file:
             policy = json.load(file)
     else:
@@ -144,21 +140,34 @@ if __name__ == '__main__':
             json.dump(study.best_params, f, indent=4)
         print("Parametri salvati in 'best_hyperparameters.json'")
         sys.exit("NN_Optimization completed — stopping script.")
-
-    if Opt_Type == 'Learned_CFA' and NN_Training == 'y':
-        mu_for_norm = torch.tensor(Data_Statistics["mu"], dtype=torch.float32)
-        sigma_for_norm = torch.tensor(Data_Statistics["sigma"], dtype=torch.float32)
-        model = PolicyNetwork(input_size, output_size,mu_for_norm,sigma_for_norm,NN_Structure["Hidden_size"],NN_Structure["N_layers"])             # NN Initializationl
+        
+    if Opt_Type in ('Learned_CFA', 'Static_CFA') and NN_Training == 'y':
+        if Opt_Type == 'Learned_CFA':
+            mu_for_norm = torch.tensor(Data_Statistics["mu"], dtype=torch.float32)
+            sigma_for_norm = torch.tensor(Data_Statistics["sigma"], dtype=torch.float32)
+            model = LearnedCFA(input_size, output_size,mu_for_norm,sigma_for_norm,NN_Structure["Hidden_size"],NN_Structure["N_layers"])             # NN Initializationl
+        else:
+            model = StaticCFA(timesteps=timesteps, n_vars=output_size)
 
         os.makedirs(training_check_dir, exist_ok=True)
         os.makedirs(save_NN_dir, exist_ok=True)
         start_time = time.perf_counter()
-        Evolution_Strategy_Training_HPC(Optimize_Risk,model,DATA,gamma,Data_Type,workers,Evolution_Params,Model_Name,save_NN_dir,training_check_dir)    # Training function Call
+        model,_ = Evolution_Strategy_Training_HPC(Optimize_Risk,model,DATA,gamma,Data_Type,workers,Evolution_Params,Model_Name,save_NN_dir,training_check_dir)    # Training function Call
         end_time = time.perf_counter()
         elapsed_time = end_time - start_time
         print(f"tempo totale: {elapsed_time:.2f} secondi ({elapsed_time/60:.2f} minuti)")
-        sys.exit("Training completed — stopping script.")
+       
+        if Opt_Type == 'Static_CFA':
+            with torch.no_grad():
+                theta, _ = model(torch.zeros(1, timesteps, input_size))
+            with open(os.path.join(save_NN_dir, f"{Model_Name}.json"), "w") as file:
+                json.dump({"description": "Static-CFA policy: fixed hourly multipliers applied to the "
+                                          "day-ahead forecasts.",
+                           "theta_e": theta[0, :, 0].tolist(),
+                           "theta_d": theta[0, :, 1].tolist()}, file, indent=4)
+            print(f"Theta salvati in {Model_Name}.json")
 
+        sys.exit("Training completed — stopping script.")
 
   
     # %% ################################################## Run of the Energy Flux Optimization with the values thetas ############################################################################################################
@@ -179,7 +188,6 @@ if __name__ == '__main__':
     Market_Price_sell        = []
     Optimized_fluxes         = {}
     Costs_                   = []
-    Costs_CVaR               = []
     Costs_Observed           = []
     Costs_Realized_Total     = []
     Imbalance_Costs_CVaR     = []
@@ -189,7 +197,6 @@ if __name__ == '__main__':
     positive_price_imbalance = []
     Grid_Exchange            = []
     Grid_Exchange_realized   = []
-    Costs_diff_scenarios = None
     Imbalance_costs_scenarios = None
     Costs_scenarios = None
     inference_times_daily = []
@@ -232,7 +239,7 @@ if __name__ == '__main__':
     
         ## Risk Assessment
 
-        RiskCosts_day,_,Imbalance_scenarios,Costs_diff_scenarios_day,Costs,Costs_CVaR_day,Imbalance_Costs_CVaR_day,Imbalance_costs_scenarios_day =  Optimize_Risk(DATA[day],theta_e_day,theta_d_day,gamma,Data_Type)
+        RiskCosts_day,_,Imbalance_scenarios,Costs,Imbalance_Costs_CVaR_day,Imbalance_costs_scenarios_day =  Optimize_Risk(DATA[day],theta_e_day,theta_d_day,gamma,Data_Type)
         if Costs != Costs_day:
             print("Costs different")
             print(f"cost from energy flux = {Costs_day} | Costs from Obj Risk = {Costs}")
@@ -244,11 +251,6 @@ if __name__ == '__main__':
         #SoC_end = soc_day[-1] # condition needed to assure that the next day the status of the storage is the same as the end of prevous day
         SoC_end = Realized_SOC_day[-1]
         ## appending results for each day
-        if Costs_diff_scenarios is None:
-            Costs_diff_scenarios = Costs_diff_scenarios_day.copy()
-        else:
-            Costs_diff_scenarios += Costs_diff_scenarios_day
-
         if Imbalance_costs_scenarios is None:
          Imbalance_costs_scenarios = Imbalance_costs_scenarios_day.copy()
         else:
@@ -274,7 +276,6 @@ if __name__ == '__main__':
         Realized_SOC.append(Realized_SOC_day)
         Market_Price_sell.append(Market_Price_sell_day)
         Costs_.append(Costs_day)
-        Costs_CVaR.append(Costs_CVaR_day)
         Costs_Observed.append(Costs_observed_day)
         Costs_Realized_Total.append(Costs_Realized_Total_day)
         Imbalance_Costs_CVaR.append(Imbalance_Costs_CVaR_day)
@@ -292,16 +293,15 @@ if __name__ == '__main__':
         ## Optimized reward Log for each day
         print(f"__________________________DAY {day}__________________________________________________________________________")
         print("_______________________COST ANALYSIS:_________________________________________________________________________")
-        print(f"Optimized Costs: {Costs_day:.2f} | Costs CVaR: {Costs_CVaR_day:.2f} | Imbalance_Costs_CVaR: {Imbalance_Costs_CVaR_day:.2f} | Observed Costs: {Costs_observed_day:.2f} | Imbalance Costs Observed: {Imbalance_Cost_day:.2f} ")
+        print(f"Optimized Costs: {Costs_day:.2f} | Imbalance_Costs_CVaR: {Imbalance_Costs_CVaR_day:.2f} | Observed Costs: {Costs_observed_day:.2f} | Imbalance Costs Observed: {Imbalance_Cost_day:.2f} ")
         print("_______________________ENERGY ANALYSIS:_______________________________________________________________________")
-        #print(f"DAY {day} --> Optimized Costs: {Costs_day:.2f} | Costs CVaR: {Costs_CVaR_day:.2f} | Imbalance_Costs_CVaR: {Imbalance_Costs_CVaR_day:.2f}  ")
         print(f" Positive Imbalance: {sum([x for x in imbalance_day if x > 0]):.2f} | Negative Imbalance: {sum([x for x in imbalance_day if x < 0]):.2f}  ")
         print("____________________________________________________________________________________________________________")  
         date += timedelta(days=1)
     ## Optimized reward Log for the whole timespan
     print(f"\033[32m__________________________TOTAL RESULTS: from {start_date} to {end_date}________________________________________________________\033[0m")
     print("\033[32m_____________________________________COST ANAYSIS_____________________________________________________________\033[0m")
-    print(f"\033[32mOptimized DA Costs : {sum(Costs_):.2f} | Costs CVaR: {sum(Costs_CVaR):.2f} | Imbalance_Costs_CVaR: {sum(Imbalance_Costs_CVaR):.2f}\033[0m")
+    print(f"\033[32mOptimized DA Costs : {sum(Costs_):.2f} | Imbalance_Costs_CVaR: {sum(Imbalance_Costs_CVaR):.2f}\033[0m")
     print(f"\033[32mPerfect Forecast Costs: {sum(Costs_Observed):.2f} | Imbalance Costs Observed: {sum(Imbalance_Cost_Observed):.2f} | Cost_Realized_Total: {sum(Costs_Realized_Total) :.2f}\033[0m")
 
 
@@ -332,13 +332,11 @@ if __name__ == '__main__':
     hour_SOC_max = len(SOC_max)
     hour_SOC_min = len(SOC_min)
 
-    tolleranza = 0.1
-    # Conta quante volte il valore assoluto dello sbilanciamento è inferiore alla tolleranza
-    hour_commitment_met = sum(abs(x) < tolleranza for x in imbalance_volumes)
-    # hour_overdelivey    = len([x for x in imbalance_volumes if x > 0])
-    # hour_underdelivery  = len([x for x in imbalance_volumes if x < 0])
-    hour_overdelivery   = sum(x > tolleranza for x in imbalance_volumes)
-    hour_underdelivery  = sum(x < -tolleranza for x in imbalance_volumes)
+    tol = 0.1
+    
+    hour_commitment_met = sum(abs(x) < tol for x in imbalance_volumes)
+    hour_overdelivery   = sum(x > tol for x in imbalance_volumes)
+    hour_underdelivery  = sum(x < -tol for x in imbalance_volumes)
     #
 
     print("\033[32m______________________________________ENERGY ANALYSIS___________________________________________________________\033[0m") 
@@ -415,7 +413,6 @@ if __name__ == '__main__':
             "costs_observed_optimal": [float(x) for x in Costs_Observed],
             "imbalance_costs_observed": [float(x) for x in Imbalance_Cost_Observed],
             "imbalance_costs_cvar": [float(x) for x in Imbalance_Costs_CVaR],
-            "costs_cvar": [float(x) for x in Costs_CVaR],
             "inference_times": inference_times_daily,
             "optimization_times": optimization_times_daily
         },

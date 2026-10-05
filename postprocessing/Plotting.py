@@ -12,12 +12,11 @@ start_date_plot = datetime(2024,7,1) # Choice how many days you want to load as 
 end_date_plot = datetime(2024,7,31)
 Opt_Type = "Static_CFA"  # Type of Optimization # ['Deterministic', 'Static_CFA', 'Learned_CFA']
 #"gamma_1_cheby"
-models = ["gamma_zscore0_punto_3","gamma0punto4_optuna","gamma0punto5_optuna","gamma0punto6_optuna","gamma_zscore0_punto_7",]
+models = ["toff0.3_sid101","toff0.4_sid101","toff0.5_sid101","toff0.6_sid101","toff0.7_sid101"]
 Model_Name = models[2]
 
 # --- CONFIGURAZIONE ---
-# current_dir = os.path.dirname(os.path.abspath(__file__))
-# json_dir = os.path.join(current_dir, 'results')
+
 
 start_str = start_date_plot.strftime('%d-%m-%Y')
 end_str   = end_date_plot.strftime('%d-%m-%Y')
@@ -30,8 +29,6 @@ else:
 
 json_path = os.path.join(results_dir, JSON_FILE)
 
-#main_dir = os.path.dirname(current_dir)
-#save_fig_dir = os.path.join(main_dir, 'figure', '_Code_repository')
 
 os.makedirs(fig_dir, exist_ok=True)
 
@@ -55,14 +52,7 @@ hourly = d["hourly_data"]
 dist = d["scenarios_data"]
 
 # --- 1. PROFITTO CUMULATO ---
-# plt.figure(figsize=(10, 6))
-# cum_costs = np.cumsum(daily["costs_realized_total"])
-# plt.plot(range(1, len(cum_costs)+1), cum_costs, color='green', marker='o', linewidth=2.5)
-# plt.axhline(0, color='black', alpha=0.3)
-# plt.title(f"Andamento Economico Cumulato ({opt_type})")
-# plt.xlabel("Giorno")
-# plt.ylabel("Euro Cumulati (€)")
-# plt.grid(True, alpha=0.3)
+
 fig = comulative_results(opt_type,models,start_str,end_str,results_dir)
 save_article_figure(fig, f"{opt_type}_Cumulative_Profit")
 
@@ -210,209 +200,3 @@ except Exception as e:
 
 plt.show()
 print(f"📊 All plots generated successfully from JSON data in: {fig_dir}")
-# # %% ###########################################################     PLOTTING RESULTS     ###################################################################################################### 
-#     number_days=(end_date_plot-start_date_plot).days + 1
-#     start_str = start_date_plot.strftime('%d-%m-%Y')
-#     end_str   = end_date_plot.strftime('%d-%m-%Y')
-#     if number_days > len(DATA):
-#         number_days = len(DATA)
-#         print(f"⚠️  Not enough Data. only {number_days} days plotted ⚠️ ")
-
-#     #validation
-
-#     validation_fig =plot_validation_results(data, Grid_Exchange_day, grid_realized, soc_day, Realized_SOC_day, imbalance)
-#     plt.tight_layout(pad=2.0)
-#     img_name = f"from_{start_str}_to_{end_str}_{Opt_Type}_validation_fig.png"
-#     plt.savefig(os.path.join(save_fig_dir,img_name))
-#     ############################################################
-# ########################  PROFITTO CUMULATO NEL TEMPO  ########################
-#     plt.figure(figsize=(10, 6))
-    
-#     # Calcoliamo la somma cumulata dei costi realizzati
-#     # Ricorda: essendo costi, se il valore scende (diventa più negativo) stai accumulando profitto
-#     cumulative_costs = np.cumsum(Costs_Realized_Total)
-    
-#     days_range = np.arange(1, len(cumulative_costs) + 1)
-    
-#     plt.plot(days_range, cumulative_costs, label=f"Modello: {Opt_Type}", 
-#              color='green', linewidth=2.5, marker='o', markersize=4)
-
-#     # Aggiungiamo una linea orizzontale sullo zero per distinguere area profitto/perdita
-#     plt.axhline(0, color='black', linestyle='-', alpha=0.3)
-
-#     plt.title(f"Andamento Economico Cumulato ({start_str} - {end_str})", fontsize=14)
-#     plt.xlabel("Giorno di Simulazione", fontsize=12)
-#     plt.ylabel("Euro Cumulati (€)", fontsize=12)
-#     plt.legend()
-#     plt.grid(True, which='both', linestyle='--', alpha=0.5)
-    
-#     # Inseriamo un testo con il valore finale per renderlo immediato
-#     plt.text(len(cumulative_costs), cumulative_costs[-1], f" Totale: {cumulative_costs[-1]:.2f}€", 
-#              verticalalignment='center', fontweight='bold')
-
-#     # constrained_layout handles spacing for article figures
-#     plt.savefig(os.path.join(save_fig_dir, "Single_Model_Cumulative_Performance.png"))
-#  ########################  EVOLUZIONE GIORNALIERA DEL RISCHIO  ########################
-#     fig = plt.figure(figsize=(7, 4), constrained_layout=True)
-    
-#     # Creiamo l'asse X (i giorni)
-#     days_range = np.arange(1, len(Costs_) + 1)
-    
-#     # Trasformiamo le liste in array per operazioni matematiche veloci
-#     planned = np.array(Costs_)
-#     realized = np.array(Costs_Realized_Total)
-#     cvar_risk = np.array(Imbalance_Costs_CVaR)
-    
-#     # Area di confidenza: dal piano DA fino al rischio massimo stimato (CVaR)
-#     plt.fill_between(days_range, planned, planned + cvar_risk, 
-#                      color='orange', alpha=0.3, label='Fascia di Rischio Stimata (DA + CVaR)')
-
-#     # Linea del Piano Day-Ahead
-#     plt.plot(days_range, planned, 'b--', marker='o', label='Piano DA (Target)')
-
-#     # Linea del Realizzato
-#     plt.plot(days_range, realized, 'r-', marker='x', linewidth=2, label='Costo Reale Realizzato')
-
-#     plt.title(f"Performance Giornaliera: Piano vs Realizzato ({start_str} - {end_str})")
-#     plt.xlabel("Giorno di Simulazione")
-#     plt.ylabel("Euro (€)")
-#     plt.legend()
-#     plt.grid(True, linestyle=':', alpha=0.6)
-#     img_name = f"from_{start_str}_to_{end_str}_{Opt_Type}_Daily_Risk_Timeline.png"
-#     plt.savefig(os.path.join(save_fig_dir, img_name))
-
-# ####################################################################
-
-#     # #scenario difference distribution
-#     # n_subplot = 2
-#     # fig, axes = plt.subplots(n_subplot, 1, figsize=(8, 10))
-#     # #VAR_imb =
-#     # Da_plan = sum(Costs_)
-#     # I_cost_obs = sum(Imbalance_Cost_Observed)
-#     # I_Cvar,I_var,_ = RightCVaR(Imbalance_costs_scenarios,alpha=0.95)
-#     # sns.histplot(Imbalance_costs_scenarios, kde=True, stat="frequency", ax=axes[0], color='blue', edgecolor='black')
-#     # axes[0].axvline(I_cost_obs, color='red', linestyle='--', linewidth=2, label=f'Imbalance Costs Observed: {I_cost_obs:.2f}€')
-#     # axes[0].axvline(I_var, color='green', linestyle='--', linewidth=2, label=f'Imbalance Costs VAR: {I_var:.2f}€')
-#     # axes[0].axvline(I_Cvar, color='blue', linestyle='--', linewidth=2, label=f'Imbalance Costs CVAR: {I_Cvar:.2f}€')
- 
-#     # #axes[1].axvline(Da_plan, color='red', linestyle='--', linewidth=2, label=f'DA_Plan Total: {Da_plan:.2f}€')
-#     # axes[0].set_title("Imbalance Costs")
-#     # axes[0].set_xlabel("euro")
-#     # axes[0].set_ylabel("Frequency")  # if you meant "Densità", use density=True
-#     # axes[0].grid(True,linestyle=':', alpha=0.7)
-#     # axes[0].legend() # Necessario per mostrare la label della linea
-
-#     # sns.histplot(Costs_scenarios, kde=True, stat="frequency", ax=axes[1], color='green', edgecolor='black')
-#     # # Aggiunta linea verticale
-#     # axes[1].axvline(Da_plan, color='red', linestyle='--', linewidth=2, label=f'DA_Plan Total: {Da_plan:.2f}€')
-#     # axes[1].set_title("Scenario Costs Distribution")
-#     # axes[1].set_xlabel("euro")
-#     # axes[1].set_ylabel("Frequency")  # if you meant "Densità", use density=True
-#     # axes[1].grid(True,linestyle=':', alpha=0.7)
-#     # axes[1].legend()
-
-#     # plt.tight_layout(pad=2.0)
-#     # img_name = f"from_{start_str}_to_{end_str}_{Opt_Type}_Distribution.png"
-#     # plt.savefig(os.path.join(save_fig_dir,img_name))
-
-#     ### Plotting of the Energy and Demand DATA ###
-#     n_subplot = 4
-#     fig, axes = plt.subplots(n_subplot, 1, figsize=(6, 10))
-
-
-#     sns.lineplot(x=range(1,number_days*timesteps+1), y=Energy_forecast, label="PV Energy forecast",ax=axes[0],marker = 'o')
-#     sns.lineplot(x=range(1,number_days*timesteps+1), y=Demand_forecast, label= "Demand Energy forecast",  ax=axes[0],marker = 'o')
-
-#     sns.lineplot(x=range(1,number_days*timesteps+1), y=Energy_forecast_modified, label= "PV Energy modified",  ax=axes[1],marker = 'o')
-#     sns.lineplot(x=range(1,number_days*timesteps+1), y=Demand_forecast_modified, label= "Demand modified",  ax=axes[1],marker = 'o')
-
-#     sns.lineplot(x=range(1,number_days*timesteps+1), y=Energy_observed, label="PV Energy observed",ax=axes[2],marker = 'o')
-#     sns.lineplot(x=range(1,number_days*timesteps+1), y=Demand_observed, label="Demand observed",ax=axes[2],marker = 'o')
-
-#     sns.lineplot(x=range(1,number_days*timesteps+1), y=theta_e, label="theta_e",ax=axes[3],marker = 'o')
-#     sns.lineplot(x=range(1,number_days*timesteps+1), y=theta_d, label="theta_d",ax=axes[3],marker = 'o')
-#     # if Opt_Type == "Parametric":
-#     #     sns.lineplot(x=range(1,number_days*timesteps+1), y=out_e, label="out_e",ax=axes[3],marker = 'o')
-#     #     sns.lineplot(x=range(1,number_days*timesteps+1), y=out_d, label="out_d",ax=axes[3],marker = 'o')
-#     titles = ["Original Forecasts","Modified Forecasts","Observed Values","thetas"]
-#     units  = ["kW","kW","kW",""]
-
-#     for ax in range(len(axes)):
-#         axes[ax].set_title(titles[ax])
-#         axes[ax].set_ylabel(units[ax])
-#         axes[ax].grid(True)
-#         axes[ax].set_xlabel("time")
-        
-#     #### put the same scale
-#     ymin = min(
-#         min(Energy_forecast), min(Demand_forecast),
-#         min(Energy_forecast_modified), min(Demand_forecast_modified),
-#         min(Energy_observed), min(Demand_observed)
-#     )
-#     ymax = max(
-#         max(Energy_forecast), max(Demand_forecast),
-#         max(Energy_forecast_modified), max(Demand_forecast_modified),
-#         max(Energy_observed), max(Demand_observed)
-#     )
-
-#     for ax in axes[:3]:
-#         ax.set_ylim(ymin, ymax+10)
-
-
-#     plt.tight_layout(pad=2.0)
-#     img_name = f"from_{start_str}_to_{end_str}_{Opt_Type}_forecasts.png"
-#     plt.savefig(os.path.join(save_fig_dir,img_name))
-   
-
-#     ### Plotting of the Optimized Energy Fluxes ###
-
-#     fig, axes = plt.subplots(3, 1, figsize=(6, 10))
-
-#     for key in Optimized_fluxes.keys():
-#         if "Storage" in key:
-#             sns.lineplot(x=range(1,number_days*timesteps+1), y=Optimized_fluxes[key], label=key,ax=axes[1], marker = "o")
-#         else:
-#             sns.lineplot(x=range(1,number_days*timesteps+1), y=Optimized_fluxes[key], label=key,ax=axes[0], marker = "o")
-
-#     sns.lineplot(x=range(1,number_days*timesteps+1), y=soc, label="SoC",ax=axes[2], marker = 'o')
-
-#     titles = ["Direct Fluxes","Battery Fluxes","SOC"]
-#     units  = ["kW","kW",""]
-
-#     for ax in range(len(axes)):
-#         axes[ax].set_title(titles[ax])
-#         axes[ax].set_xlabel("time")
-#         axes[ax].set_ylabel(units[ax])
-#         axes[ax].grid(True)
-
-#     plt.tight_layout(pad=2.0)
-#     img_name = f"from_{start_str}_to_{end_str}_{Opt_Type}_BatteryManagement.png"
-#     plt.savefig(os.path.join(save_fig_dir,img_name))
-#      ### Grid exchange ####
-#     fig, ax = plt.subplots(figsize=(6,4))
-#     sns.lineplot(x=range(1,number_days*timesteps+1), y=Grid_Exchange, label="Grid Exchange",ax=ax, marker = 'o')
-#     ax.set_title("Grid Exchange")
-#     ax.set_xlabel("time")
-#     ax.set_ylabel("kWh")
-#     ax.grid(True)
-#     img_name = f"from_{start_str}_to_{end_str}_{Opt_Type}_GridExchange.png"
-#     plt.savefig(os.path.join(save_fig_dir,img_name))
-#      ### Prices ###
-#     fig, axes = plt.subplots(3, 1, figsize=(6, 10))
-#     sns.lineplot(x=range(1,number_days*timesteps+1), y=Market_Price_sell, label="Market Price",ax=axes[0],marker = 'o')
-#     sns.lineplot(x=range(1,number_days*timesteps+1), y=positive_price_imbalance, label="imbalance Price +",ax=axes[1],marker = 'o')
-#     sns.lineplot(x=range(1,number_days*timesteps+1), y=negative_price_imbalance, label="imbalance Price -",ax=axes[2],marker = 'o')
-
-#     titles = ["Market Price","imbalance Price +","imbalance Price -"]
-#     units  = ["€/kWh","€/kWh","€/kWh"]
-#     for ax in range(len(axes)):
-#         axes[ax].set_title(titles[ax])
-#         axes[ax].set_ylabel(units[ax])
-#         axes[ax].grid(True)
-#         axes[ax].set_xlabel("time")
-#     plt.tight_layout(pad=2.0)
-#     img_name = f"ffrom_{start_str}_to_{end_str}_Prices.png"
-#     plt.savefig(os.path.join(save_fig_dir,img_name))
-   
-#     plt.show()
-

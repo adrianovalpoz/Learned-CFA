@@ -12,9 +12,8 @@ models_path = os.path.join(os.path.dirname(__file__), '..', '..', 'models')
 # Add models folder to sys.path
 sys.path.append(models_path)
 
-
-from Battery import Battery
-from Energy_Flux import Energy_Flux
+from ..milp.Battery import Battery
+from ..milp.Energy_Flux import Energy_Flux
 
 def optimize_energy_flux(data,scenario_e,scenario_d,type):
     

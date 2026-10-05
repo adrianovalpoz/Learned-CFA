@@ -1,5 +1,5 @@
 {
-    "description": "Training hyperparameters of the Learned-CFA policy (Table 3 of the paper). sigma, alpha, n_layers and hidden_dim come from the Optuna study; population_size, n_iterations and weight_decay were set by hand.",
+    "description": "Training hyperparameters of the published Learned-CFA and Static-CFA policies (Table 3 of the paper): the values below are the ones the released policies were trained with. The hyperparameter search can be re-run with NN_Optimization = 'y' in MainScript.py, which writes its own selection to results/NN_Size/best_hyperparameters.json; that selection need not coincide with these values, which were fixed by hand for the final runs.",
     "population_size": 40,
     "sigma": 0.06482672422496741,
     "alpha": 0.08126420254574877,

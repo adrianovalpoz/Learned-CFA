@@ -6,8 +6,10 @@ import matplotlib.pyplot as plt
 from tqdm import tqdm
 import math
 
-from Problem_Data import Problem_Data
-from optimize_energy_flux import optimize_energy_flux
+import _path
+from learned_cfa_src.data_pipeline.Problem_Data import Problem_Data
+from learned_cfa_src.data_pipeline.optimize_energy_flux import optimize_energy_flux
+from learned_cfa_src.directory_names import data_json_dir, scenario_json_dir
 
 
 from datetime import datetime, timedelta
@@ -128,15 +130,17 @@ def Scenario(input_file_name,output_file_name,date,start_date,SoC_End):
     ########################################## JSON IMPORT #######################################################
     # Get the directory where this script is located
 
-    script_dir  = os.path.dirname(os.path.abspath(__file__))
-    # Specify the folder that is outside the current script folder
-    folder_path_read = os.path.join(script_dir, '..', 'json_repository_for_simulation','SystemData')  # Going one level up
-    data_path = os.path.join(folder_path_read, input_file_name)
+    # script_dir  = os.path.dirname(os.path.abspath(__file__))
+    # # Specify the folder that is outside the current script folder
+    # folder_path_read = os.path.join(script_dir, '..', 'json_repository_for_simulation','SystemData')  # Going one level up
+    # data_path = os.path.join(folder_path_read, input_file_name)
     
-    folder_path_save= os.path.join(script_dir, '..', 'json_repository_for_simulation','ScenarioData') # Going one level up
-    full_path = os.path.join(folder_path_save, output_file_name)
+    # folder_path_save= os.path.join(script_dir, '..', 'json_repository_for_simulation','ScenarioData') # Going one level up
+    # full_path = os.path.join(folder_path_save, output_file_name)
     # Open and load the JSON file
-
+    data_path = os.path.join(data_json_dir, input_file_name)
+    os.makedirs(scenario_json_dir, exist_ok=True)
+    full_path = os.path.join(scenario_json_dir, output_file_name)
     with open(data_path, "r") as file:
         Data = json.load(file)  # Convert JSON to a Python dictionary
 
@@ -144,7 +148,8 @@ def Scenario(input_file_name,output_file_name,date,start_date,SoC_End):
 
     # Creation of Proble_Data object to store all the Data needed for the simulation, and pass them to the optimization functions.
 
-    DATA = Problem_Data(Data["Battery"],Data["Simulation"],Data["Fluxes"],Data["Prices"],Data["Energy"],Data["Demand"],"","","","","","","")
+
+    DATA = Problem_Data(Data["Battery"],Data["Simulation"],Data["Fluxes"],Data["Prices"],Data["Energy"],Data["Demand"],"","","","","","","","")
     timesteps = DATA.Simulation_Data["time_horizon"]*DATA.Simulation_Data["time_resolution"]
 
     ################# loop for scenario MILP ###########################################
@@ -232,7 +237,7 @@ def Scenario(input_file_name,output_file_name,date,start_date,SoC_End):
     with open(full_path, "w") as file:
         json.dump(Scenario_MILP_Results, file, indent=4)
         
-    print(f"JSON saved at: {folder_path_save}")
+    print(f"JSON saved at: {scenario_json_dir}")
     return SoC_End
 
 def Distribution(input_file_name):

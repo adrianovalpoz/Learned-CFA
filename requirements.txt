@@ -1,0 +1,32 @@
+# Learned-CFA - verified dependency set
+#
+# These are the exact versions the code has been run and verified with (Python 3.13.2,
+# Windows 11). Pinning them is deliberate: the published results depend on numerical
+# behaviour that library updates can change, and at least one such break has already
+# happened (pandas 3 removed the `method` argument of DataFrame.fillna).
+#
+#     pip install -r requirements.txt
+#
+# A CPU-only PyTorch build is enough: no GPU is used anywhere. The policy network has 626
+# parameters and the run time is dominated by the MILP solves, not by the network.
+
+torch==2.13.0
+numpy==2.2.4
+pandas==3.0.5
+scipy==1.15.2
+pulp==3.3.2
+optuna==4.9.0
+matplotlib==3.11.1
+seaborn==0.13.2
+tqdm==4.70.0
+psutil==7.2.2
+
+# PuLP ships the CBC solver it calls, so no separate solver installation is required.
+
+# ---------------------------------------------------------------------------------------
+# Optional: only needed by scripts/DownloadFromEntsoEAPI.py, which re-downloads the
+# day-ahead and imbalance prices from the ENTSO-E Transparency Platform. The prices are
+# already contained in the published dataset, so this is not needed to reproduce the
+# results. Not part of the verified set above.
+#
+# entsoe-py

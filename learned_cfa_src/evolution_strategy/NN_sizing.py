@@ -3,7 +3,7 @@ import os
 import optuna
 import torch
 from .es_Policy import Evolution_Strategy_Training_HPC
-from .Policy import PolicyNetwork
+from .Policy import LearnedCFA
 
 # current_dir = os.path.dirname(os.path.abspath(__file__))
 # parent_dir = os.path.dirname(current_dir)
@@ -43,7 +43,7 @@ def NN_opt_objective(trial,DATA,mu_data,sigma_data,Data_Type,gamma,optimal_worke
     mu_for_norm = torch.tensor(mu_data, dtype=torch.float32)
     sigma_for_norm = torch.tensor(sigma_data, dtype=torch.float32)
 
-    model = PolicyNetwork(input_size=10, output_size=2, 
+    model = LearnedCFA(input_size=10, output_size=2, 
                           hidden_size=hidden_size, n_layers= n_layers,
                           mu_for_norm=mu_for_norm, sigma_for_norm=sigma_for_norm)
     
